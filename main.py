@@ -4,6 +4,8 @@ import file_server
 import os
 import schedule
 
+from email_module import create_message, init_service, send_message
+
 
 def prueba_jorge():
     token = client.generate_token()
@@ -28,10 +30,21 @@ def periodical_check():
                     f.write("Esto es una prueba para las mac.")
                 dummy = False
 
+def send_email():
+    email_sender = 'HIDS ST2 Service'
+    email_to = 'jorrapdia@alum.us.es'
+    email_subject = 'Informe periódico de integridad del sistema'
+    email_body = 'Este email es una prueba.'
+    email_file = 'Prueba/salida.csv'
+
+    gmail_service = init_service()
+    raw_message = create_message(email_sender, email_to, email_subject, email_body, email_file)
+    send_message(gmail_service, "me", raw_message)
 
 # Programación de tareas:
-schedule.every().minute.do(periodical_check)
 schedule.every(0.5).minutes.do(prueba_jorge)
+schedule.every().minute.do(periodical_check)
+schedule.every().minute.do(send_email)
 
 while True:
     schedule.run_pending()
