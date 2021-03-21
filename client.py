@@ -1,5 +1,7 @@
 import secrets, hashlib, io, file_server
 
+from error import NewFileException
+
 
 def generate_token():
     # Devolvemos un token en hexadecimal con un tamaño de 256 bits (32 bytes).
@@ -45,10 +47,13 @@ def check_file_integrity(filepath):
     challenge_value = challenge(token, file_hash)
     mac_file = file_server.mac_function(file_hash, token, challenge_value)
 
-    file_hash_server, mac_file_server, verification_hash = file_server.verify_integrity(filepath, file_hash, token)
-    if verification_hash:
-        if mac_file == mac_file_server:
-            print("El archivo " + filepath + " es correcto.")
-        else:
-            print(
-                "El archivo " + filepath + " no es correcto: el MAC obtenido en el cliente no es igual al obtenido en el servidor.")
+    try:
+        file_hash_server, mac_file_server, verification_hash = file_server.verify_integrity(filepath, file_hash, token)
+        if verification_hash:
+            if mac_file == mac_file_server:
+                print("El archivo " + filepath + " es correcto.")
+            else:
+                print(
+                    "El archivo " + filepath + " no es correcto: el MAC obtenido en el cliente no es igual al obtenido en el servidor.")
+    except NewFileException:
+        print("El archivo " + filepath + " no estaba registrado en el sistema de archivos, y ha sido añadido correctamente.")
