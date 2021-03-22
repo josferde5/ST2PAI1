@@ -1,9 +1,10 @@
-import secrets, hashlib, io, argon2, file_server, hmac
+import secrets, hashlib, io, file_server, hmac
+from error import NewFileException
 
-def generate_token(): 
+
+def generate_token():
     # Devolvemos un token en hexadecimal con un tamaño de 256 bits (32 bytes).
     token = secrets.token_hex(32)
-    print(token)
     return token
 
 def hash_file(file):
@@ -12,16 +13,16 @@ def hash_file(file):
 
     # Para optimizar la lectura del fichero obtenemos el tamaño de buffer del sistema.
     buffer_size = io.DEFAULT_BUFFER_SIZE
-    
+
     # Abrimos el archivo para leerlo en modo binario e iteramos con un tamaño de bloque = buffer_size actualizando nuestro objeto hash.
     with open(file, 'rb') as f:
         for chunk in iter(lambda: f.read(buffer_size), b""):
             hash_file.update(chunk)
-    
+
     # Devolvemos la representación del hash en formato hexadecimal.
-    print(hash_file.hexdigest())
-    return (file, hash_file.hexdigest())
-    
+    return hash_file.hexdigest()
+
+
 def challenge(token, hash_file):
     # Convertimos el token y el hash del archivo de hexadecimal a integer mediante la función auxiliar 'hex_to_int()'.
     token_int = hex_to_int(token)
@@ -29,16 +30,13 @@ def challenge(token, hash_file):
 
     # Para asegurarnos que la operación módulo entre ambos valores es un resultado distinto a los mismos, comprobamos que valor es mayor.
     if hash_file_int > token_int:
-        print(hash_file_int % token_int)
         return hash_file_int % token_int
     else:
-        print(token_int % hash_file_int)
         return token_int % hash_file_int
 
 def hex_to_int(hex_value):
-    int_value = int(hex_value, base = 16)
+    int_value = int(hex_value, base=16)
     return int_value
-
 
 def generate_hmac(challenge, hash_file):
     hash_file_bytes = bytes(hash, encoding='UTF-8')
@@ -46,5 +44,20 @@ def generate_hmac(challenge, hash_file):
     mac = hmac.new(challenge_bytes, hash_file_bytes, hashlib.sha256)
     return mac.hexdigest()
 
+def check_file_integrity(filepath):
+    token = generate_token()
+    file_hash = hash_file(filepath)
+    challenge_value = challenge(token, file_hash)
+    mac_file = file_server.mac_function(file_hash, token, challenge_value)
 
+    try:
+        file_hash_server, mac_file_server, verification_hash = file_server.verify_integrity(filepath, file_hash, token)
+        if verification_hash:
+            if mac_file == mac_file_server:
+                print("El archivo " + filepath + " es correcto.")
+            else:
+                print(
+                    "El archivo " + filepath + " no es correcto: el MAC obtenido en el cliente no es igual al obtenido en el servidor.")
+    except NewFileException:
+        print("El archivo " + filepath + " no estaba registrado en el sistema de archivos, y ha sido añadido correctamente.")
 
