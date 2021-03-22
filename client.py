@@ -1,14 +1,14 @@
-import secrets, hashlib, io, argon2, file_server
+import secrets, hashlib, io, argon2, file_server, hmac
 
 def generate_token(): 
     # Devolvemos un token en hexadecimal con un tamaño de 256 bits (32 bytes).
-    token = secrets.token_hex(64)
+    token = secrets.token_hex(32)
     print(token)
     return token
 
 def hash_file(file):
-    # Creamos el objeto hash, en nuestro caso usaremos Blake2. En concreto usaremos Blake2b que nos devolverá un digest con un tamaño de 256 bits
-    hash_file = hashlib.blake2b()
+    # Creamos el objeto hash, en nuestro caso usaremos Blake2. En concreto usaremos Blake2s que nos devolverá un digest con un tamaño de 256 bits
+    hash_file = hashlib.blake2s()
 
     # Para optimizar la lectura del fichero obtenemos el tamaño de buffer del sistema.
     buffer_size = io.DEFAULT_BUFFER_SIZE
@@ -40,18 +40,11 @@ def hex_to_int(hex_value):
     return int_value
 
 
-def check_file_integrity(filepath):
-    token = generate_token()
-    file_hash = hash_file(filepath)
-    challenge_value = challenge(token, file_hash)
-    mac_file = file_server.mac_function(file_hash, token, challenge_value)
-
-    file_hash_server, mac_file_server, verification_hash = file_server.verify_integrity(filepath, file_hash, token)
-    if verification_hash:
-        if mac_file == mac_file_server:
-            print("El archivo " + filepath + " es correcto.")
-        else:
-            print("El archivo " + filepath + " no es correcto: el MAC obtenido en el cliente no es igual al obtenido en el servidor.")
+def generate_hmac(challenge, hash_file):
+    hash_file_bytes = bytes(hash, encoding='UTF-8')
+    challenge_bytes = bytes(challenge, encoding='UTF-8')
+    mac = hmac.new(challenge_bytes, hash_file_bytes, hashlib.sha256)
+    return mac.hexdigest()
 
 
 
