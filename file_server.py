@@ -3,8 +3,8 @@ import hmac
 import os
 from error import NewFileException
 from datetime import datetime as dt
-
-import client
+import csv
+import client, reports
 
 _hash_table = {}
 datetime = None

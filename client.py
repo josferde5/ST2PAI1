@@ -24,9 +24,9 @@ def hash_file(file):
 
 
 def challenge(token, hash_file):
-    # Convertimos el token y el hash del archivo de hexadecimal a integer mediante la función auxiliar 'hex_to_int()'.
-    token_int = hex_to_int(token)
-    hash_file_int = hex_to_int(hash_file)
+    # Convertimos el token y el hash del archivo de hexadecimal a integer.
+    token_int = int(token, base=16)
+    hash_file_int = int(hash_file, base=16)
 
     # Para asegurarnos que la operación módulo entre ambos valores es un resultado distinto a los mismos, comprobamos que valor es mayor.
     if hash_file_int > token_int:
@@ -34,30 +34,19 @@ def challenge(token, hash_file):
     else:
         return token_int % hash_file_int
 
-def hex_to_int(hex_value):
-    int_value = int(hex_value, base=16)
-    return int_value
-
 def generate_hmac(challenge, hash_file):
     hash_file_bytes = bytes(hash, encoding='UTF-8')
     challenge_bytes = bytes(challenge, encoding='UTF-8')
     mac = hmac.new(challenge_bytes, hash_file_bytes, hashlib.sha256)
     return mac.hexdigest()
 
-def check_file_integrity(filepath):
-    token = generate_token()
-    file_hash = hash_file(filepath)
-    challenge_value = challenge(token, file_hash)
-    mac_file = file_server.mac_function(file_hash, token, challenge_value)
-
+def check_integrity_file(filepath, hmac, hmac_server):
+    integrity = hmac.compare_digest(hmac, hmac_server)
     try:
-        file_hash_server, mac_file_server, verification_hash = file_server.verify_integrity(filepath, file_hash, token)
-        if verification_hash:
-            if mac_file == mac_file_server:
-                print("El archivo " + filepath + " es correcto.")
-            else:
-                print(
-                    "El archivo " + filepath + " no es correcto: el MAC obtenido en el cliente no es igual al obtenido en el servidor.")
+        if integrity:
+            print("El archivo " + filepath + " es correcto.")
+        else:
+            print("El archivo " + filepath + " no es correcto: el MAC obtenido en el cliente no es igual al obtenido en el servidor.")
     except NewFileException:
         print("El archivo " + filepath + " no estaba registrado en el sistema de archivos, y ha sido añadido correctamente.")
 

@@ -28,7 +28,7 @@ def periodical_check():
         for root, dirs, filenames in os.walk(d):
             for filename in filenames:
                 full_path = os.path.join(root, filename)
-                client.check_file_integrity(full_path)
+                client.check_integrity_file(full_path)
 
     file_server.check_deleted_files()
 
@@ -59,6 +59,7 @@ def configuration():
     schedule.every(0.5).minutes.do(prueba_jorge)
     schedule.every(c.intervalo_comprobacion).minutes.do(periodical_check)
     schedule.every(c.intervalo_informes).minutes.do(send_email)
+    
 
 
 if __name__ == "__main__":
