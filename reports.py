@@ -49,5 +49,5 @@ rows = (['22/03/2021 17:19:11', 'C:/Prueba', 'asdgkfgfasgdfasgdfjasgdfj', True],
         ['19/03/2021 17:19:11', 'C:/Prueba', 'asdgkfgfasgdfasgdfjasgdfj', False],
         ['18/03/2021 17:19:11', 'C:/Prueba', 'asdgkfgfasgdfasgdfjasgdfj', False])    
 
-config_log(rows)
+create_logs(rows)
 create_report('Reports/logs.csv')
