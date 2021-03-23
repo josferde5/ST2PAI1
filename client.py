@@ -40,13 +40,27 @@ def generate_hmac(challenge, hash_file):
     mac = hmac.new(challenge_bytes, hash_file_bytes, hashlib.sha256)
     return mac.hexdigest()
 
-def check_integrity_file(filepath, hmac, hmac_server):
-    integrity = hmac.compare_digest(hmac, hmac_server)
-    try:
-        if integrity:
+#def check_integrity_file(filepath, hmac, hmac_server):
+#    integrity = hmac.compare_digest(hmac, hmac_server)
+#    try:
+#        if integrity:
+#            print("El archivo " + filepath + " es correcto.")
+#        else:
+#            print("El archivo " + filepath + " no es correcto: el MAC obtenido en el cliente no es igual al obtenido en el servidor.")
+#    except NewFileException:
+#        print("El archivo " + filepath + " no estaba registrado en el sistema de archivos, y ha sido añadido correctamente.")
+
+def check_file_integrity(filepath):
+    token = generate_token()
+    file_hash = hash_file(filepath)
+    challenge_value = challenge(token, file_hash)
+    mac_file = file_server.mac_function(file_hash, token, challenge_value)
+
+    file_hash_server, mac_file_server, verification_hash = file_server.verify_integrity(filepath, file_hash, token)
+    if verification_hash:
+        if mac_file == mac_file_server:
             print("El archivo " + filepath + " es correcto.")
         else:
             print("El archivo " + filepath + " no es correcto: el MAC obtenido en el cliente no es igual al obtenido en el servidor.")
-    except NewFileException:
-        print("El archivo " + filepath + " no estaba registrado en el sistema de archivos, y ha sido añadido correctamente.")
 
+    return (filepath, file_hash_server, verification_hash) 

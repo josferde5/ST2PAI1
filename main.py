@@ -1,10 +1,11 @@
 import time
-import client
+import client, reports
 import file_server
 import os
 import schedule
 import config
 from error import ApplicationError
+from datetime import datetime
 
 from email_module import create_message, init_service, send_message
 
@@ -24,12 +25,15 @@ def initial_store(c):
 def periodical_check():
     c = config.Config()
     file_server.register_analysis_time()
+    entries = []
     for d in c.directories:
         for root, dirs, filenames in os.walk(d):
             for filename in filenames:
                 full_path = os.path.join(root, filename)
-                client.check_integrity_file(full_path)
-
+                filepath, file_hash_server, verification_hash = client.check_file_integrity(full_path)
+                entries.append([datetime.now().strftime('%d/%m/%Y %H:%M:%S'), filepath, file_hash_server, verification_hash])
+    
+    reports.create_logs(tuple(entries))
     file_server.check_deleted_files()
 
 
@@ -59,6 +63,7 @@ def configuration():
     schedule.every(0.5).minutes.do(prueba_jorge)
     schedule.every(c.intervalo_comprobacion).minutes.do(periodical_check)
     schedule.every(c.intervalo_informes).minutes.do(send_email)
+    schedule.every(3).minutes.do(reports.create_report('Reports/logs.csv'))
     
 
 
