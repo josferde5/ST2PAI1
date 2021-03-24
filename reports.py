@@ -36,8 +36,7 @@ def create_report(logs_file):
     Html_file.write('<h3> Integrity rate: ' + str(round(true / len(filtered_logs) * 100, 2)) + '%</h3>')
     Html_file.write(html)
     Html_file.close()
-    
-    main.send_email()
+
     print("The report was created in the 'Reports' folder and the email was sent")
 
     
