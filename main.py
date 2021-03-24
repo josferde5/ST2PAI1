@@ -10,13 +10,6 @@ from datetime import datetime
 from email_module import create_message, init_service, send_message
 
 
-def prueba_jorge():
-    token = client.generate_token()
-    hashfile = client.hash_file('prueba.txt')
-    challenge = client.challenge(token, hashfile)
-    print(file_server.mac_function(hashfile, token, challenge))
-
-
 def initial_store(c):
     for d in c.directories:
         file_server.store_files(d)
@@ -60,12 +53,9 @@ def configuration():
     initial_store(c)
 
     # Programación de tareas:
-    schedule.every(0.5).minutes.do(prueba_jorge)
-    schedule.every(c.intervalo_comprobacion).minutes.do(periodical_check)
-    schedule.every(c.intervalo_informes).minutes.do(send_email)
+    schedule.every(0.2).minutes.do(periodical_check)
     schedule.every(3).minutes.do(reports.create_report('Reports/logs.csv'))
     
-
 
 if __name__ == "__main__":
 

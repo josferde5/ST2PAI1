@@ -3,8 +3,7 @@ import hmac
 import os
 from error import NewFileException
 from datetime import datetime as dt
-import csv
-import client, reports
+import client
 import main
 
 _hash_table = {}
@@ -53,7 +52,6 @@ def verify_integrity(filepath, file_hash, token):
     else:
         print(
             "El archivo " + filepath + " no es correcto: el hash enviado por el cliente no es igual al obtenido por el servidor.")
-        # CONFIGURAR TRAS HACER PRUEBAS
         main.send_email()
     return file_hash_stored, mac_file, verification_hash
 

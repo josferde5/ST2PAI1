@@ -5,21 +5,21 @@ class ConfigSingleton(type):
 
     _instances = {}
 
-    def __call__(self, *args, **kwargs):
-        if self not in self._instances:
-            self._instances[self] = super(ConfigSingleton, self).__call__(*args, **kwargs)
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(ConfigSingleton, cls).__call__(*args, **kwargs)
             config = ConfigParser()
             config.read('config.ini')
-            self.directories = config['DIRECTORIOS']['directoriosQueVigilar'].split(',')
+            cls.directories = config['DIRECTORIOS']['directoriosQueVigilar'].split(',')
 
             config_tiempos = config['TIEMPOS']
-            self.intervalo_comprobacion = int(config_tiempos.get('intervaloComprobacion', 1440))
-            self.intervalo_informes = int(config_tiempos.get('intervaloInformes', 43200))
+            cls.intervalo_comprobacion = int(config_tiempos.get('intervaloComprobacion', '1440'))
+            cls.intervalo_informes = int(config_tiempos.get('intervaloInformes', '43200'))
 
             config_misc = config['MISC']
-            self.algoritmo_hashing = config_misc.get('algoritmoHashing', 'BLAKE2S')
+            cls.algoritmo_hashing = config_misc.get('algoritmoHashing', 'BLAKE2S')
 
-        return self._instances[self]
+        return cls._instances[cls]
 
 
 class Config(metaclass=ConfigSingleton):
