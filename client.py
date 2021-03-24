@@ -3,9 +3,12 @@ import hashlib
 import hmac
 import io
 import secrets
+import logging
 
 from email_module import send_alert_email
 from error import NewFileException
+
+logger = logging.getLogger(__name__)
 
 
 def generate_token():
@@ -47,19 +50,21 @@ def check_file_integrity(filepath):
     file_hash = hash_file(filepath)
     challenge_value = challenge(token, file_hash)
     mac_file = file_server.mac_function(file_hash, token, challenge_value)
+    failed_reason = 'none'
 
     try:
         file_hash_server, mac_file_server, verification_hash = file_server.verify_integrity(filepath, file_hash, token)
-        if verification_hash:
-            if mac_file == mac_file_server:
-                print("El archivo " + filepath + " es correcto.")
-            else:
-                print(
-                    "El archivo " + filepath + " no es correcto: el MAC obtenido en el cliente no es igual al obtenido en el servidor.")
-                send_alert_email(filepath, 1)
+        if verification_hash and not mac_file == mac_file_server:
+            logger.warning(
+                "The file %s is corrupted: the MAC obtained by the client is not the same as the one obtained by the server.",
+                filepath)
+            failed_reason = 'mac'
+        elif not verification_hash:
+            failed_reason = 'hash'
+            send_alert_email(filepath, 1)
     except NewFileException:
-        print("El archivo " + filepath + " no estaba registrado en el sistema de archivos, y ha sido añadido correctamente.")
+        logger.info("The file %s was not registered in the server. It has been added successfully.", filepath)
         file_hash_server = None
         verification_hash = None
 
-    return filepath, file_hash_server, verification_hash
+    return filepath, file_hash_server, verification_hash, failed_reason

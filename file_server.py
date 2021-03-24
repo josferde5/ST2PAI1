@@ -6,8 +6,9 @@ from email_module import send_alert_email
 from error import NewFileException
 from datetime import datetime as dt
 import client
-import main
+import logging
 
+logger = logging.getLogger(__name__)
 _hash_table = {}
 datetime = None
 
@@ -52,8 +53,9 @@ def verify_integrity(filepath, file_hash, token):
         challenge = client.challenge(token, file_hash_stored)
         mac_file = mac_function(file_hash, token, challenge)
     else:
-        print(
-            "El archivo " + filepath + " no es correcto: el hash enviado por el cliente no es igual al obtenido por el servidor.")
+        logger.warning(
+            "The file %s is corrupted: the hash sent by the client is not the same as the one obtained by the server.",
+            filepath)
         send_alert_email(filepath, 0)
     return file_hash_stored, mac_file, verification_hash
 
@@ -62,9 +64,13 @@ def check_deleted_files():
     keys_to_delete = []
     for k, v in _hash_table.items():
         if not v[1] == datetime:
-            print("El archivo " + k + " ha sido eliminado o no se encuentra.")
+            logger.warning(
+                "The file %s has been deleted or is not found.",
+                k)
             send_alert_email(k, 2)
             keys_to_delete.append(k)
 
     for k in keys_to_delete:
         del _hash_table[k]
+
+    return keys_to_delete

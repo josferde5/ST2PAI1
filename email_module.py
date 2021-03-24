@@ -18,8 +18,11 @@ from google.oauth2.credentials import Credentials
 
 import config
 
+import logging
+
 # If modifying these scopes, delete the file token.json.
 SCOPES = ['https://www.googleapis.com/auth/gmail.send']
+logger = logging.getLogger(__name__)
 
 
 def init_service():
@@ -92,10 +95,10 @@ def send_message(service, user_id, message):
     try:
         message = (service.users().messages().send(userId=user_id, body=message)
                    .execute())
-        print('Message Sent with Id: %s' % message['id'])
+        logger.info('Message Sent with Id: %s', message['id'])
         return message
     except errors.HttpError as error:
-        print('An error occurred: %s' % error)
+        logger.exception('An error occurred', error)
 
 
 def send_alert_email(filepath, alert_type):
