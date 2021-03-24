@@ -1,6 +1,8 @@
 import hashlib
 import hmac
 import os
+
+from email_module import send_alert_email
 from error import NewFileException
 from datetime import datetime as dt
 import client
@@ -52,7 +54,7 @@ def verify_integrity(filepath, file_hash, token):
     else:
         print(
             "El archivo " + filepath + " no es correcto: el hash enviado por el cliente no es igual al obtenido por el servidor.")
-        main.send_email()
+        send_alert_email(filepath, 0)
     return file_hash_stored, mac_file, verification_hash
 
 
@@ -61,6 +63,7 @@ def check_deleted_files():
     for k, v in _hash_table.items():
         if not v[1] == datetime:
             print("El archivo " + k + " ha sido eliminado o no se encuentra.")
+            send_alert_email(k, 2)
             keys_to_delete.append(k)
 
     for k in keys_to_delete:

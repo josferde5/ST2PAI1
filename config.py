@@ -19,6 +19,9 @@ class ConfigSingleton(type):
             config_misc = config['MISC']
             cls.algoritmo_hashing = config_misc.get('algoritmoHashing', 'BLAKE2S')
 
+            config_email = config['EMAIL']
+            cls.contact_email = config_email.get('contactEmail', '')
+
         return cls._instances[cls]
 
 

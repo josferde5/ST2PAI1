@@ -4,6 +4,7 @@ import hmac
 import io
 import secrets
 
+from email_module import send_alert_email
 from error import NewFileException
 
 
@@ -55,6 +56,7 @@ def check_file_integrity(filepath):
             else:
                 print(
                     "El archivo " + filepath + " no es correcto: el MAC obtenido en el cliente no es igual al obtenido en el servidor.")
+                send_alert_email(filepath, 1)
     except NewFileException:
         print("El archivo " + filepath + " no estaba registrado en el sistema de archivos, y ha sido añadido correctamente.")
         file_hash_server = None
