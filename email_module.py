@@ -2,11 +2,9 @@ from __future__ import print_function
 
 import base64
 import datetime
-import mimetypes
 import os.path
-from email.mime.audio import MIMEAudio
+from email import encoders
 from email.mime.base import MIMEBase
-from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -62,31 +60,12 @@ def create_file_message(sender, to, subject, message_text, file):
     msg = MIMEText(message_text)
     message.attach(msg)
 
-    content_type, encoding = mimetypes.guess_type(file)
+    part = MIMEBase('application', "vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    part.set_payload(open(file, "rb").read())
+    encoders.encode_base64(part)
+    part.add_header('Content-Disposition', 'attachment', filename="hids-report.xlsx")
+    message.attach(part)
 
-    if content_type is None or encoding is not None:
-        content_type = 'application/octet-stream'
-    main_type, sub_type = content_type.split('/', 1)
-    if main_type == 'text':
-        fp = open(file, 'rb')
-        msg = MIMEText(fp.read(), _subtype=sub_type)
-        fp.close()
-    elif main_type == 'image':
-        fp = open(file, 'rb')
-        msg = MIMEImage(fp.read(), _subtype=sub_type)
-        fp.close()
-    elif main_type == 'audio':
-        fp = open(file, 'rb')
-        msg = MIMEAudio(fp.read(), _subtype=sub_type)
-        fp.close()
-    else:
-        fp = open(file, 'rb')
-        msg = MIMEBase(main_type, sub_type)
-        msg.set_payload(fp.read())
-        fp.close()
-    filename = os.path.basename(file)
-    msg.add_header('Content-Disposition', 'attachment', filename=filename)
-    message.attach(msg)
     encoded_msg = base64.urlsafe_b64encode(message.as_bytes())
     return {'raw': encoded_msg.decode()}
 
@@ -101,19 +80,22 @@ def send_message(service, user_id, message):
         logger.exception('An error occurred', error)
 
 
-def send_alert_email(filepath, alert_type):
+def send_alert_email(files_failed):
     c = config.Config()
     dt_string = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     email_sender = 'HIDS ST2 Service'
     email_to = c.contact_email
     email_subject = 'ALERTA: Detectado fallo de integridad'
 
-    if alert_type == 0:
-        email_body = 'Durante la verificación del sistema de archivos en vigilancia con fecha y hora ' + dt_string + ', se ha detectado que el fichero ' + filepath + ' presenta un fallo de integridad ya que el hash enviado por el cliente no es igual al almacenado en el servidor.'
-    elif alert_type == 1:
-        email_body = 'Durante la verificación del sistema de archivos en vigilancia con fecha y hora ' + dt_string + ', se ha detectado que el fichero ' + filepath + ' presenta un fallo de integridad ya que el MAC obtenido en el cliente no es igual al obtenido en el servidor.'
-    else:
-        email_body = 'Durante la verificación del sistema de archivos en vigilancia con fecha y hora ' + dt_string + ', se ha detectado que el fichero ' + filepath + ' presenta un fallo de integridad ya que ha sido eliminado o no se encuentra.'
+    email_body = 'Durante la verificación del sistema de archivos en vigilancia con fecha y hora ' + dt_string + ', se han detectado fallos de integridad en los siguientes ficheros:\n'
+
+    for dt, filename, reason in files_failed:
+        if reason == 'hash':
+            email_body += ' - El fichero ' + filename + ' presenta un fallo de integridad ya que el hash enviado por el cliente no es igual al almacenado en el servidor.\n'
+        elif reason == 'mac':
+            email_body += ' - El fichero ' + filename + ' presenta un fallo de integridad ya que el MAC obtenido en el cliente no es igual al obtenido en el servidor.\n'
+        else:
+            email_body += ' - El fichero ' + filename + ' presenta un fallo de integridad ya que ha sido eliminado o no se encuentra.\n'
 
     raw_message = create_message(email_sender, email_to, email_subject, email_body)
     send_message(init_service(), "me", raw_message)

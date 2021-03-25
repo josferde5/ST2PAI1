@@ -2,14 +2,23 @@ import hashlib
 import hmac
 import os
 
-from email_module import send_alert_email
 from error import NewFileException
 from datetime import datetime as dt
 import client
 import logging
+import config
 
 logger = logging.getLogger(__name__)
 _hash_table = {}
+_hash_algorithm = {
+    "SHA1": hashlib.sha1,
+    "SHA256": hashlib.sha256,
+    "SHA512": hashlib.sha512,
+    "SHA3_256": hashlib.sha3_256,
+    "SHA3_512": hashlib.sha3_512,
+    "BLAKE2B": hashlib.blake2b,
+    "BLAKE2S": hashlib.blake2s
+}
 datetime = None
 
 
@@ -31,9 +40,10 @@ def store_file(full_path):
 
 
 def mac_function(hash_string, challenge):
+    c = config.Config()
     msg_bytes = bytes(hash_string, encoding='UTF-8')
     challenge_bytes = challenge.to_bytes(32, byteorder="big")
-    digester = hmac.new(challenge_bytes, msg_bytes, hashlib.blake2s)
+    digester = hmac.new(challenge_bytes, msg_bytes, _hash_algorithm.get(c.hashing_algorithm, hashlib.blake2s))
     return digester.hexdigest()
 
 
@@ -53,7 +63,6 @@ def verify_integrity(filepath, file_hash, token):
         logger.warning(
             "The file %s is corrupted: the hash sent by the client is not the same as the one obtained by the server.",
             filepath)
-        send_alert_email(filepath, 0)
     return file_hash_stored, mac_file, verification_hash
 
 
@@ -64,7 +73,6 @@ def check_deleted_files():
             logger.warning(
                 "The file %s has been deleted or is not found.",
                 k)
-            send_alert_email(k, 2)
             keys_to_delete.append(k)
 
     for k in keys_to_delete:

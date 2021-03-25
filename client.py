@@ -3,11 +3,20 @@ import hashlib
 import io
 import secrets
 import logging
+import config
 
-from email_module import send_alert_email
 from error import NewFileException
 
 logger = logging.getLogger(__name__)
+_hash_algorithm = {
+    "SHA1": hashlib.sha1(),
+    "SHA256": hashlib.sha256(),
+    "SHA512": hashlib.sha512(),
+    "SHA3_256": hashlib.sha3_256(),
+    "SHA3_512": hashlib.sha3_512(),
+    "BLAKE2B": hashlib.blake2b(digest_size=32),
+    "BLAKE2S": hashlib.blake2s(digest_size=32)
+}
 
 
 def generate_token():
@@ -15,8 +24,26 @@ def generate_token():
     return token
 
 
+def get_hash_algorithm():
+    c = config.Config()
+    if c.hashing_algorithm == 'SHA1':
+        return hashlib.sha1()
+    elif c.hashing_algorithm == 'SHA256':
+        return hashlib.sha256()
+    elif c.hashing_algorithm == 'SHA512':
+        return hashlib.sha512()
+    elif c.hashing_algorithm == 'SHA3_256':
+        return hashlib.sha3_256()
+    elif c.hashing_algorithm == 'SHA3_512':
+        return hashlib.sha3_512()
+    elif c.hashing_algorithm == 'BLAKE2B':
+        return hashlib.blake2b(digest_size=32)
+    else:
+        return hashlib.blake2s(digest_size=32)
+
+
 def hash_file(file):
-    file_hash = hashlib.blake2b(digest_size=32)
+    file_hash = get_hash_algorithm()
 
     buffer_size = io.DEFAULT_BUFFER_SIZE
 
@@ -51,7 +78,6 @@ def check_file_integrity(filepath):
                 "The file %s is corrupted: the MAC obtained by the client is not the same as the one obtained by the server.",
                 filepath)
             failed_reason = 'mac'
-            send_alert_email(filepath, 1)
         elif not verification_hash:
             failed_reason = 'hash'
     except NewFileException:

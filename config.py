@@ -1,5 +1,6 @@
 from configparser import ConfigParser
 import logging
+import re
 
 _log_level = {
     "DEBUG": logging.DEBUG,
@@ -21,31 +22,37 @@ class ConfigSingleton(type):
             config = ConfigParser()
             config.read('config.ini')
 
-            cls.directories = config['DIRECTORIES']['dirsToCheck'].split(',')
+            c = config['CONFIG']
 
-            cls.check_periodicity = 1440
-            cls.report_generation_periodicity = 43200
-            if 'TIME' in config:
-                config_tiempos = config['TIME']
-                cls.check_periodicity = int(config_tiempos.get('checkPeriodicity', '1440'))
-                cls.report_generation_periodicity = int(config_tiempos.get('reportGenerationPeriodicity', '43200'))
+            cls.logging_format = c.get('loggingFormat', '%(levelname)s %(asctime)s: %(message)s', raw=True)
+            cls.logging_level = _log_level.get(c.get('loggingLevel', 'INFO'), logging.INFO)
 
-            cls.hashing_algorithm = 'BLAKE2S'
-            if 'MISC' in config:
-                config_misc = config['MISC']
-                cls.hashing_algorithm = config_misc.get('hashingAlgorithm', 'BLAKE2S')
+            logging.basicConfig(format=cls.logging_format, level=cls.logging_level)
+            logger = logging.getLogger(__name__)
 
-            config_email = config['EMAIL']
-            cls.contact_email = config_email.get('contactEmail', '')
+            cls.directories = c.get('dirsToCheck', None)
+            if cls.directories is None or cls.directories == '':
+                logger.error("'dirsToCheck' parameter was not set in config.ini, and it is mandatory")
+                input('Press Enter to stop the execution')
+                exit(1)
+            cls.directories = cls.directories.split(',')
 
-            logging_format = '%(levelname)s %(asctime)s: %(message)s'
-            logging_level = 'INFO'
-            if 'LOGGING' in config:
-                config_logging = config['LOGGING']
-                logging_format = config_logging.get('format', '%(levelname)s %(asctime)s: %(message)s', raw=True)
-                logging_level = config_logging.get('level', 'INFO')
+            cls.contact_email = c.get('contactEmail', None)
+            if cls.contact_email is None or not re.match(r"[^@]+@[^@]+\.[^@]+", cls.contact_email):
+                logger.error("'email' parameter was not set in config.ini or is not valid")
+                input('Press Enter to stop the execution')
+                exit(1)
 
-            logging.basicConfig(format=logging_format, level=_log_level.get(logging_level, logging.INFO))
+            cls.check_periodicity = float(c.get('checkPeriodicity', '0'))
+            cls.report_generation_periodicity = float(c.get('reportGenerationPeriodicity', '0'))
+
+            cls.hashing_algorithm = c.get('hashingAlgorithm', 'BLAKE2S')
+
+            if cls.hashing_algorithm not in ('SHA1', 'SHA256', 'SHA512', 'SHA3_256', 'SHA3_512', 'BLAKE2S', 'BLAKE2B'):
+                logger.warning(
+                    "You set an invalid hashing algorithm. Possible values are: SHA1, SHA256, SHA512, SHA3_256, SHA3_512, BLAKE2B, BLAKE2S")
+                logger.warning("Using BLAKE2S as default")
+
 
         return cls._instances[cls]
 

@@ -3,6 +3,11 @@ import pandas as pd
 from datetime import datetime
 import logging
 import xlsxwriter
+import shutil
+import time
+import config
+
+import email_module
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +69,9 @@ def update_stats(rows, files_deleted):
 
     logger.info("The stats.csv and failed_checks.csv files have been updated")
 
+    if len(failed_files) > 0:
+        email_module.send_alert_email(failed_files)
+
 
 def create_logs(rows, files_deleted):
     dirname = os.path.dirname(__file__)
@@ -79,57 +87,78 @@ def create_logs(rows, files_deleted):
 
 
 def create_report():
-    dirname = os.path.dirname(__file__)
-    now = datetime.now()
-    filename = os.path.join(dirname, 'Reports/report_' + now.strftime('%m-%y') + '.xlsx')
+    c = config.Config()
+    if c.report_generation_periodicity is not None or datetime.day == 1:
+        dirname = os.path.dirname(__file__)
+        now = datetime.now()
 
-    workbook = xlsxwriter.Workbook(filename)
-    worksheet = workbook.add_worksheet()
+        filename = 'report.xlsx'
+        pathname = os.path.join(dirname, 'Reports/' + filename)
 
-    stats = pd.read_csv('Reports/stats.csv', sep='|', quotechar="'", quoting=csv.QUOTE_NONNUMERIC)
-    failed_checks = pd.read_csv('Reports/failed_checks.csv', sep='|', quotechar="'", quoting=csv.QUOTE_NONNUMERIC)
+        if os.path.exists(pathname):
+            os.remove(pathname)
 
-    title_format = workbook.add_format({'bold': 1, 'align': 'center', 'valign': 'vcenter', 'border': 1, 'border_color': '#000000'})
-    column_title_format = workbook.add_format({'align': 'center', 'valign': 'vcenter', 'border': 1, 'border_color': '#000000'})
-    data_format = workbook.add_format({'valign': 'vcenter', 'border': 1, 'border_color': '#000000'})
+        workbook = xlsxwriter.Workbook(pathname)
+        worksheet = workbook.add_worksheet()
 
-    worksheet.set_column(1, 7, 23.57)
+        stats = pd.read_csv('Reports/stats.csv', sep='|', quotechar="'", quoting=csv.QUOTE_NONNUMERIC)
+        failed_checks = pd.read_csv('Reports/failed_checks.csv', sep='|', quotechar="'", quoting=csv.QUOTE_NONNUMERIC)
 
-    worksheet.merge_range("B2:H2", 'HIDS Report', title_format)
-    worksheet.merge_range("B3:H3", 'Generation date: %s' % now.strftime("%d/%m/%Y %H:%M:%S"), column_title_format)
-    worksheet.write(3, 1, 'Total checks', column_title_format)
-    worksheet.write(4, 1, int(stats['TOTAL_CHECKS'][0]), data_format)
+        title_format = workbook.add_format({'bold': 1, 'align': 'center', 'valign': 'vcenter', 'border': 1, 'border_color': '#000000'})
+        column_title_format = workbook.add_format({'align': 'center', 'valign': 'vcenter', 'border': 1, 'border_color': '#000000'})
+        data_format = workbook.add_format({'valign': 'vcenter', 'border': 1, 'border_color': '#000000'})
 
-    worksheet.write(3, 2, 'Checks passed', column_title_format)
-    worksheet.write(4, 2, int(stats['CHECKS_PASSED'][0]), data_format)
+        worksheet.set_column(1, 7, 23.57)
 
-    worksheet.write(3, 3, 'Checks failed by hash', column_title_format)
-    worksheet.write(4, 3, int(stats['CHECKS_FAILED_HASH'][0]), data_format)
+        worksheet.merge_range("B2:H2", 'HIDS Report', title_format)
+        worksheet.merge_range("B3:H3", 'Generation date: %s' % now.strftime("%d/%m/%Y %H:%M:%S"), column_title_format)
+        worksheet.write(3, 1, 'Total checks', column_title_format)
+        worksheet.write(4, 1, int(stats['TOTAL_CHECKS'][0]), data_format)
 
-    worksheet.write(3, 4, 'Checks failed by MAC', column_title_format)
-    worksheet.write(4, 4, int(stats['CHECKS_FAILED_MAC'][0]), data_format)
+        worksheet.write(3, 2, 'Checks passed', column_title_format)
+        worksheet.write(4, 2, int(stats['CHECKS_PASSED'][0]), data_format)
 
-    percentage_format = workbook.add_format({'num_format': '0.0000%', 'valign': 'vcenter', 'border': 1, 'border_color': '#000000'})
-    worksheet.write(3, 5, 'Integrity rate', column_title_format)
-    worksheet.write_formula(4, 5, '=C5/B5', cell_format=percentage_format)
+        worksheet.write(3, 3, 'Checks failed by hash', column_title_format)
+        worksheet.write(4, 3, int(stats['CHECKS_FAILED_HASH'][0]), data_format)
 
-    worksheet.write(3, 6, 'Not found or deleted files', column_title_format)
-    worksheet.write(4, 6, int(stats['NOT_FOUND_DELETED'][0]), data_format)
+        worksheet.write(3, 4, 'Checks failed by MAC', column_title_format)
+        worksheet.write(4, 4, int(stats['CHECKS_FAILED_MAC'][0]), data_format)
 
-    worksheet.write(3, 7, 'Number of files added', column_title_format)
-    worksheet.write(4, 7, int(stats['NUMBER_FILES_ADDED'][0]), data_format)
+        percentage_format = workbook.add_format({'num_format': '0.0000%', 'valign': 'vcenter', 'border': 1, 'border_color': '#000000'})
+        worksheet.write(3, 5, 'Integrity rate', column_title_format)
+        worksheet.write_formula(4, 5, '=C5/B5', cell_format=percentage_format)
 
-    worksheet.merge_range("B7:E7", 'Checks failed', title_format)
-    worksheet.write(7, 1, 'Datetime', column_title_format)
-    worksheet.merge_range('C8:D8', 'Filename', column_title_format)
-    worksheet.write(7, 4, 'Fail reason', column_title_format)
-    row = 8
-    for i, data in failed_checks.iterrows():
-        worksheet.write(row, 1, data['DATETIME'], data_format)
-        worksheet.merge_range('C' + str(row+1) + ':D' + str(row+1), data['FILENAME'], data_format)
-        worksheet.write(row, 4, data['FAIL_REASON'], data_format)
-        row += 1
+        worksheet.write(3, 6, 'Not found or deleted files', column_title_format)
+        worksheet.write(4, 6, int(stats['NOT_FOUND_DELETED'][0]), data_format)
 
-    workbook.close()
+        worksheet.write(3, 7, 'Number of files added', column_title_format)
+        worksheet.write(4, 7, int(stats['NUMBER_FILES_ADDED'][0]), data_format)
 
-    logger.info("The report was created in the 'Reports' folder and the email was sent")
+        worksheet.merge_range("B7:E7", 'Checks failed', title_format)
+        worksheet.write(7, 1, 'Datetime', column_title_format)
+        worksheet.merge_range('C8:D8', 'Filename', column_title_format)
+        worksheet.write(7, 4, 'Fail reason', column_title_format)
+        row = 8
+        for i, data in failed_checks.iterrows():
+            worksheet.write(row, 1, data['DATETIME'], data_format)
+            worksheet.merge_range('C' + str(row+1) + ':D' + str(row+1), data['FILENAME'], data_format)
+            worksheet.write(row, 4, data['FAIL_REASON'], data_format)
+            row += 1
+
+        workbook.close()
+        email_module.send_report_email(pathname)
+
+        logger.info("The report was created in the 'Reports' folder and the email was sent")
+
+        shutil.move(pathname, filename)
+        tic = time.perf_counter()
+        while True:
+            try:
+                shutil.rmtree('Reports')
+                break
+            except OSError:
+                if time.perf_counter() - tic > 30:
+                    raise
+
+        os.mkdir('Reports')
+        shutil.move(filename, 'Reports/' + filename)

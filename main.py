@@ -20,6 +20,7 @@ def initial_store(c):
 
 def periodical_check():
     logger.info("Periodical check started")
+    tic = time.perf_counter()
     c = config.Config()
     file_server.register_analysis_time()
     entries = []
@@ -33,7 +34,9 @@ def periodical_check():
 
     files_deleted = file_server.check_deleted_files()
     reports.create_logs(tuple(entries), files_deleted)
+    tac = time.perf_counter()
     logger.info("Periodical check finished")
+    logger.debug(f"Time elapsed: {tac-tic:0.4f} seconds")
 
 
 def configuration():
@@ -43,6 +46,7 @@ def configuration():
 
     # Lectura del archivo de configuración
     c = config.Config()
+    logger.setLevel(c.logging_level)
 
     if os.path.exists('Reports'):
         shutil.rmtree('Reports')
@@ -52,8 +56,12 @@ def configuration():
     initial_store(c)
 
     # Programación de tareas:
-    schedule.every(0.5).minutes.do(periodical_check)
-    schedule.every(1.2).minutes.do(reports.create_report)
+    if c.check_periodicity != 0:
+        schedule.every(c.check_periodicity).minutes.do(periodical_check)
+        schedule.every(c.report_generation_periodicity).minutes.do(reports.create_report)
+    else:
+        schedule.every().day.at("00:00").do(periodical_check)
+        schedule.every().day.at("08:00").do(reports.create_report)
 
 
 if __name__ == "__main__":
