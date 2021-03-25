@@ -33,7 +33,7 @@ def store_file(full_path):
 def mac_function(hash_string, challenge):
     msg_bytes = bytes(hash_string, encoding='UTF-8')
     challenge_bytes = challenge.to_bytes(32, byteorder="big")
-    digester = hmac.new(challenge_bytes, msg_bytes, hashlib.sha256)
+    digester = hmac.new(challenge_bytes, msg_bytes, hashlib.blake2s)
     return digester.hexdigest()
 
 

@@ -16,7 +16,7 @@ def generate_token():
 
 
 def hash_file(file):
-    file_hash = hashlib.blake2s()
+    file_hash = hashlib.blake2b(digest_size=32)
 
     buffer_size = io.DEFAULT_BUFFER_SIZE
 
