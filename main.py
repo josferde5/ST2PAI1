@@ -56,7 +56,7 @@ def configuration():
     initial_store(c)
 
     # Programación de tareas:
-    if c.check_periodicity != 0:
+    if c.check_periodicity != 0 and c.report_generation_periodicity != 0:
         schedule.every(c.check_periodicity).minutes.do(periodical_check)
         schedule.every(c.report_generation_periodicity).minutes.do(reports.create_report)
     else:
