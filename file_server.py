@@ -30,14 +30,11 @@ def store_file(full_path):
     _hash_table[full_path] = (hash_hex, datetime)
 
 
-def mac_function(hash_string, token, challenge):
-    if challenge != client.challenge(token, hash_string):
-        return None
-    else:
-        msg_bytes = bytes(hash_string, encoding='UTF-8')
-        challenge_bytes = challenge.to_bytes(32, byteorder="big")
-        digester = hmac.new(challenge_bytes, msg_bytes, hashlib.sha256)
-        return digester.hexdigest()
+def mac_function(hash_string, challenge):
+    msg_bytes = bytes(hash_string, encoding='UTF-8')
+    challenge_bytes = challenge.to_bytes(32, byteorder="big")
+    digester = hmac.new(challenge_bytes, msg_bytes, hashlib.sha256)
+    return digester.hexdigest()
 
 
 def verify_integrity(filepath, file_hash, token):
@@ -51,7 +48,7 @@ def verify_integrity(filepath, file_hash, token):
     mac_file = None
     if verification_hash:
         challenge = client.challenge(token, file_hash_stored)
-        mac_file = mac_function(file_hash, token, challenge)
+        mac_file = mac_function(file_hash, challenge)
     else:
         logger.warning(
             "The file %s is corrupted: the hash sent by the client is not the same as the one obtained by the server.",

@@ -1,6 +1,5 @@
 import file_server
 import hashlib
-import hmac
 import io
 import secrets
 import logging
@@ -38,18 +37,11 @@ def challenge(token, file_hash):
         return token_int % hash_file_int
 
 
-def generate_hmac(challenge_token, file_hash):
-    hash_file_bytes = bytes(file_hash, encoding='UTF-8')
-    challenge_bytes = bytes(challenge_token, encoding='UTF-8')
-    mac = hmac.new(challenge_bytes, hash_file_bytes, hashlib.sha256)
-    return mac.hexdigest()
-
-
 def check_file_integrity(filepath):
     token = generate_token()
     file_hash = hash_file(filepath)
     challenge_value = challenge(token, file_hash)
-    mac_file = file_server.mac_function(file_hash, token, challenge_value)
+    mac_file = file_server.mac_function(file_hash, challenge_value)
     failed_reason = 'none'
 
     try:
@@ -59,9 +51,9 @@ def check_file_integrity(filepath):
                 "The file %s is corrupted: the MAC obtained by the client is not the same as the one obtained by the server.",
                 filepath)
             failed_reason = 'mac'
+            send_alert_email(filepath, 1)
         elif not verification_hash:
             failed_reason = 'hash'
-            send_alert_email(filepath, 1)
     except NewFileException:
         logger.info("The file %s was not registered in the server. It has been added successfully.", filepath)
         file_hash_server = None
